@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Builder Path</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    --paper: #EEF1EF;
+    --surface: #FFFFFF;
+    --sunk: #E3E8E5;
+    --ink: #14213D;
+    --muted: #586374;
+    --line: #CBD3CF;
+    --act: #14213D;
+    --act-ink: #FFFFFF;
+    --blaze-red: #C4122F;
+    --blaze-white: #FFFFFF;
+    --ok: #17784A;
+    --ok-soft: #DDF0E4;
+    --no: #A3361F;
+    --no-soft: #F8E3DC;
+    --focus: #2357D9;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0F141C; --surface: #171E29; --sunk: #1E2733; --ink: #E7ECF2; --muted: #9BA6B6; --line: #2C3747;
+      --act: #E7ECF2; --act-ink: #0F141C; --blaze-red: #E5485F; --blaze-white: #E7ECF2;
+      --ok: #4CC28C; --ok-soft: #14301F; --no: #F08A6F; --no-soft: #3A2019; --focus: #8FA9FF; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0F141C; --surface: #171E29; --sunk: #1E2733; --ink: #E7ECF2; --muted: #9BA6B6; --line: #2C3747;
+    --act: #E7ECF2; --act-ink: #0F141C; --blaze-red: #E5485F; --blaze-white: #E7ECF2;
+    --ok: #4CC28C; --ok-soft: #14301F; --no: #F08A6F; --no-soft: #3A2019; --focus: #8FA9FF; color-scheme: dark;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  *, *::before, *::after { box-sizing: inherit; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif; font-size: 17px; line-height: 1.55; }
+  a { color: inherit; text-underline-offset: 3px; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+  .skip { position: absolute; left: -999px; top: 8px; background: var(--surface); padding: 8px 12px; z-index: 20; }
+  .skip:focus { left: 8px; }
+  button, select, textarea, input { font: inherit; color: inherit; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  .btn { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; border: 1.5px solid var(--ink); background: transparent; color: var(--ink); padding: 10px 18px; border-radius: 999px; font-weight: 700; line-height: 1.2; text-decoration: none; }
+  .btn:hover { background: var(--sunk); }
+  .btn.main { background: var(--act); border-color: var(--act); color: var(--act-ink); }
+  .btn.main:hover { filter: brightness(1.15); }
+  .btn.link { border-color: transparent; padding-left: 2px; padding-right: 2px; text-decoration: underline; font-weight: 400; }
+  .btn[disabled] { opacity: .4; cursor: not-allowed; }
+
+  /* Header */
+  header.top { border-bottom: 1px solid var(--line); background: var(--surface); }
+  .bar { max-width: 1120px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .bar h1 { margin: 0; font-size: 20px; }
+  .bar h1 a { text-decoration: none; }
+  .bar .sub { color: var(--muted); font-size: 15px; }
+  .chrono { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .chrono .live { font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .chrono .live::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--blaze-red); }
+
+  /* Layout */
+  .layout { max-width: 1120px; margin: 0 auto; padding: 28px 20px 64px; display: grid; gap: 32px; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .layout { grid-template-columns: 270px minmax(0, 1fr); } aside.side { position: sticky; top: 20px; align-self: start; } }
+  main { min-width: 0; max-width: 740px; }
+  @media (max-width: 899px) { aside.side { order: 2; border-top: 1px solid var(--line); padding-top: 24px; } .bar .sub { display: none; } .next .what { font-size: 23px; } .next { padding: 20px; } }
+  main:focus { outline: none; }
+
+  /* The trail */
+  .homelink { display: block; padding: 8px 10px; border-radius: 8px; text-decoration: none; font-weight: 700; margin-bottom: 14px; }
+  .homelink[aria-current="page"], .homelink:hover { background: var(--sunk); }
+  ol.trail { list-style: none; margin: 0; padding: 0; position: relative; }
+  ol.trail::before { content: ""; position: absolute; left: 21px; top: 16px; bottom: 16px; border-left: 2px dashed var(--line); }
+  .stage > a { position: relative; display: flex; gap: 14px; align-items: flex-start; padding: 9px 10px; border-radius: 8px; text-decoration: none; }
+  .stage > a:hover, .stage > a[aria-current="page"] { background: var(--sunk); }
+  .blaze { flex: none; width: 24px; height: 16px; margin-top: 4px; border-radius: 2px; background: linear-gradient(var(--blaze-white) 0 50%, var(--blaze-red) 50% 100%); box-shadow: 0 0 0 1.5px var(--ink); position: relative; z-index: 1; }
+  .stage.todo .blaze { opacity: .45; }
+  .stage.locked .blaze { background: var(--sunk); box-shadow: 0 0 0 1.5px var(--line); }
+  .stage .t { display: flex; flex-direction: column; line-height: 1.3; }
+  .stage .t small { color: var(--muted); font-size: 14px; }
+  .stage.locked .t { color: var(--muted); }
+  ul.substeps { list-style: none; margin: 2px 0 10px 48px; padding: 0; font-size: 15px; }
+  ul.substeps a { display: flex; justify-content: space-between; gap: 10px; padding: 5px 10px; border-radius: 6px; text-decoration: none; }
+  ul.substeps a:hover, ul.substeps a[aria-current="page"] { background: var(--sunk); }
+  ul.substeps a[aria-current="page"] { font-weight: 700; }
+  ul.substeps span { color: var(--muted); }
+
+  /* Content blocks */
+  .block { padding: 26px 0; border-top: 1px solid var(--line); }
+  .block:first-child { border-top: 0; padding-top: 0; }
+  h2 { font-size: 24px; line-height: 1.25; margin: 0 0 10px; }
+  h3 { font-size: 18px; margin: 18px 0 8px; }
+  p { margin: 0 0 12px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 15px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+
+  .next { background: var(--surface); border: 1.5px solid var(--ink); border-radius: 14px; padding: 24px; }
+  .next .what { font-size: 28px; line-height: 1.2; font-weight: 700; margin: 4px 0 8px; max-width: 30ch; }
+  .next .where { color: var(--muted); margin-bottom: 18px; }
+
+  .meter { height: 10px; background: var(--sunk); border-radius: 99px; overflow: hidden; margin: 8px 0; }
+  .meter > span { display: block; height: 100%; background: var(--ink); border-radius: 99px; }
+  .meter.ok > span { background: var(--ok); }
+  .bigfig { font-size: 48px; font-weight: 700; line-height: 1; }
+
+  ul.plain { list-style: none; padding: 0; margin: 0; }
+  ul.plain li { padding: 10px 0; border-bottom: 1px solid var(--line); display: flex; gap: 12px; justify-content: space-between; flex-wrap: wrap; }
+  ul.plain li:last-child { border-bottom: 0; }
+  .tag { font-size: 14px; padding: 2px 10px; border-radius: 99px; background: var(--sunk); color: var(--muted); white-space: nowrap; }
+  .tag.ok { background: var(--ok-soft); color: var(--ok); font-weight: 700; }
+
+  ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 0; }
+  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: start; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  ol.steps li::before { content: counter(s); width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--ink); display: grid; place-items: center; font-weight: 700; }
+  ol.steps li.done::before { content: "✓"; background: var(--ok); border-color: var(--ok); color: #fff; }
+  ol.steps .d { color: var(--muted); font-size: 15px; margin: 2px 0 0; }
+
+  /* Lesson reader */
+  .pager { display: flex; gap: 6px; margin: 4px 0 18px; }
+  .pager span { flex: 1; height: 6px; border-radius: 99px; background: var(--sunk); }
+  .pager span.read { background: var(--ok); }
+  .pager span.here { background: var(--ink); }
+  article.lesson { background: var(--surface); border-radius: 14px; padding: 28px; border: 1px solid var(--line); }
+  article.lesson p { max-width: 64ch; }
+  .sources { font-size: 15px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; margin-top: 16px; }
+  .sources a { display: block; color: var(--ink); }
+
+  /* Quiz */
+  fieldset.q { border: 0; padding: 0; margin: 0; }
+  fieldset.q legend { font-size: 22px; font-weight: 700; line-height: 1.3; margin-bottom: 14px; padding: 0; }
+  .opt { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 10px; margin-bottom: 10px; cursor: pointer; background: var(--surface); }
+  .opt:hover { border-color: var(--ink); }
+  .opt input { margin-top: 5px; accent-color: var(--ink); }
+  .opt.right { border-color: var(--ok); background: var(--ok-soft); }
+  .opt.wrong { border-color: var(--no); background: var(--no-soft); }
+  .feedback { border-left: 4px solid var(--ok); padding: 10px 14px; margin: 14px 0; background: var(--surface); }
+  .feedback.bad { border-left-color: var(--no); }
+
+  /* Exercises & notebook */
+  .ex { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+  .ex.validated { border-color: var(--ok); }
+  .ex h3 { margin: 0; }
+  .ex .meta { color: var(--muted); font-size: 15px; margin: 2px 0 10px; }
+  .ex .crit label { display: flex; gap: 10px; align-items: flex-start; padding: 5px 0; }
+  .ex input[type=checkbox] { margin-top: 6px; accent-color: var(--ok); width: 18px; height: 18px; }
+  .field { display: block; width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--surface); }
+  .field:focus { border-color: var(--ink); }
+  textarea.field { min-height: 110px; resize: vertical; }
+  .err { color: var(--no); font-size: 15px; margin: 6px 0 0; min-height: 1em; }
+  .locknote { padding: 18px; border: 1.5px dashed var(--line); border-radius: 12px; }
+
+  .homelink.sub2 { margin-top: -10px; }
+  .tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+  .toolcard { display: block; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; text-decoration: none; }
+  .toolcard:hover { border-color: var(--ink); }
+  .toolcard strong { font-size: 19px; display: block; }
+  .toolcard .c { color: var(--muted); font-size: 14px; display: block; margin-bottom: 6px; }
+  .toolcard .w { font-size: 15px; display: block; }
+  .usecase { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin-bottom: 12px; }
+  .usecase h4 { margin: 0 0 6px; font-size: 18px; }
+  .usecase p { margin: 0; }
+  ol.flow { list-style: none; padding: 0; margin: 4px 0 12px; display: flex; flex-wrap: wrap; gap: 6px 0; align-items: center; }
+  ol.flow li { display: flex; align-items: center; font-size: 15px; }
+  ol.flow li span { background: var(--sunk); border-radius: 8px; padding: 4px 10px; }
+  ol.flow li:not(:last-child)::after { content: "→"; margin: 0 8px; color: var(--muted); }
+  .try { border-left: 4px solid var(--blaze-red); background: var(--surface); padding: 14px 18px; border-radius: 0 12px 12px 0; }
+  .pair { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  @media (min-width: 640px) { .pair { grid-template-columns: 1fr 1fr; } }
+  .try code { display: block; margin: 8px 0; padding: 8px 10px; background: var(--sunk); border-radius: 6px; font-size: 14px; overflow-x: auto; white-space: pre; }
+  .toolsline { font-size: 15px; color: var(--muted); margin-top: 10px; }
+  .toolsline a { color: var(--ink); }
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--paper); padding: 10px 18px; border-radius: 999px; font-weight: 700; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 30; }
+  .toast.show { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Aller au contenu</a>
+<header class="top">
+  <div class="bar">
+    <h1><a href="#accueil">Builder Path</a></h1>
+    <span class="sub">Votre parcours en autonomie vers le métier de product builder IA</span>
+    <div class="chrono" id="chrono"></div>
+  </div>
+</header>
+<div class="layout">
+  <aside class="side"><nav aria-label="Le parcours" id="trail"></nav></aside>
+  <main id="main" tabindex="-1"></main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const MODULES = [
+  {
+    id: 1, slug: "module-1", title: "Agents, workflows et RAG", hours: "6 à 8 h",
+    goal: "Comprendre quand un workflow suffit, quand un agent se justifie, et comment brancher un modèle sur vos propres données.",
+    lessons: [
+      { id: "l1-1", title: "Workflow ou agent : choisir le motif le plus simple",
+        body: ["Un workflow suit un chemin défini à l’avance : déclencheur, traitements, action. Un agent confie au modèle le choix des étapes et des outils à appeler. Le second est plus souple, plus cher et plus difficile à évaluer.",
+               "La règle que donne Anthropic dans son guide sur les agents : commencer par le motif le plus simple qui résout le problème (un appel bien formulé, puis une chaîne, puis un routage) et n’ajouter de l’autonomie que lorsque la mesure le justifie."],
+        sources: [["Anthropic, Building effective agents","https://www.anthropic.com/engineering/building-effective-agents"],["Documentation n8n","https://docs.n8n.io/"]] },
+      { id: "l1-2", title: "n8n en pratique : déclencheur, nœuds, agent",
+        body: ["n8n est un outil d’automatisation open source que l’on peut héberger soi-même en Docker. Un workflow commence par un nœud déclencheur (webhook, formulaire, planning), enchaîne des nœuds de traitement et finit par une action (envoi, écriture en base, réponse HTTP).",
+               "Le nœud AI Agent ajoute un modèle de langage qui peut appeler des outils (recherche, base de données, API). C’est la brique du jour 1 du programme Le Wagon."],
+        sources: [["freeCodeCamp, cours n8n","https://www.freecodecamp.org/news/learn-n8n-to-design-develop-and-deploy-production-grade-ai-agents/"],["Documentation n8n","https://docs.n8n.io/"]] },
+      { id: "l1-3", title: "RAG : embeddings, découpage, récupération",
+        body: ["Un RAG (retrieval-augmented generation) répond à partir de vos documents : chaque extrait est transformé en vecteur (embedding), stocké dans une base vectorielle comme Postgres avec pgvector, puis les extraits les plus proches de la question sont injectés dans le prompt.",
+               "La qualité dépend d’abord de la récupération : un mauvais découpage ou une mauvaise recherche produit une réponse fausse, même avec le meilleur modèle. On évalue donc la récupération séparément de la génération."],
+        sources: [["DeepLearning.AI, Building Applications with Vector Databases","https://www.deeplearning.ai/short-courses/building-applications-vector-databases"],["Documentation Supabase","https://supabase.com/docs"]] },
+      { id: "l1-4", title: "Évaluer avant de livrer",
+        body: ["Les evals sont l’infrastructure de base d’un produit IA. Un eval de capacité mesure ce que le système sait faire ; un eval de régression vérifie qu’un changement ne casse pas ce qui marchait.",
+               "Un premier jeu de 50 à 100 cas réalistes, notés par un humain puis par un modèle juge calibré sur ces notes, suffit à piloter les itérations. Sans eval, l’équipe découvre les régressions en production."],
+        sources: [["Anthropic, Demystifying evals for AI agents","https://anthropic.com/engineering/demystifying-evals-for-ai-agents"],["Anthropic, Develop test cases","https://platform.claude.com/docs/en/test-and-evaluate/develop-tests"]] }
+    ],
+    quiz: [
+      { q: "Quelle est la différence principale entre un workflow et un agent ?", a: ["Un workflow utilise un modèle de langage, pas l’agent","L’agent décide des étapes avec un modèle, le workflow suit un chemin prédéfini","L’agent est toujours plus fiable","Il n’y en a pas, ce sont des synonymes"], ok: 1, exp: "Dans un agent, le modèle choisit les étapes et les outils ; dans un workflow, le chemin est écrit à l’avance. C’est ce qui rend l’agent plus souple et plus difficile à évaluer." },
+      { q: "Que recommande Anthropic pour démarrer un produit IA ?", a: ["Un agent multi-outils dès le départ","Le motif le plus simple qui résout le problème","Un fine-tuning du modèle","Une orchestration multi-agents"], ok: 1, exp: "Commencer simple, mesurer, puis ajouter de l’autonomie seulement si la mesure le justifie." },
+      { q: "Dans un RAG, à quoi sert l’embedding ?", a: ["À compresser le texte","À transformer un texte en vecteur pour la recherche sémantique","À traduire le texte","À chiffrer les documents"], ok: 1, exp: "L’embedding représente le sens d’un extrait sous forme de vecteur ; la recherche compare les vecteurs entre eux." },
+      { q: "pgvector, c’est :", a: ["Un modèle de langage","Une extension Postgres pour stocker et comparer des vecteurs","Un nœud n8n","Un format de fichier"], ok: 1, exp: "pgvector ajoute à Postgres un type vecteur et des index de similarité ; Supabase l’active en un clic." },
+      { q: "La réponse de votre RAG est fausse. Que vérifier en premier ?", a: ["La température du modèle","Les extraits récupérés avant génération","Le style du prompt","La clé d’API"], ok: 1, exp: "Si la récupération ramène les mauvais extraits, aucun réglage du modèle ne corrigera la réponse." },
+      { q: "Un eval de régression sert à :", a: ["Mesurer de nouvelles capacités","Vérifier qu’un changement ne dégrade pas ce qui fonctionnait","Entraîner le modèle","Estimer le coût par requête"], ok: 1, exp: "Il se joue à chaque modification de prompt, de modèle ou de données, comme une suite de tests." },
+      { q: "Taille raisonnable d’un premier jeu de test :", a: ["3 cas","50 à 100 cas réalistes","10 000 cas","Aucun, on observe la production"], ok: 1, exp: "Assez pour couvrir les cas courants et les cas limites, assez petit pour être relu par un humain." },
+      { q: "Dans n8n, un nœud déclencheur (trigger) :", a: ["Exécute le modèle","Démarre le workflow sur un événement","Stocke les données","Envoie un courriel"], ok: 1, exp: "Webhook, formulaire, planning ou événement d’une application : c’est toujours le point d’entrée du workflow." }
+    ],
+    exercises: [
+      { id: "e1-1", title: "Installer n8n en Docker et livrer un premier workflow", tool: "n8n", time: "2 h",
+        brief: "Lancez n8n en local, puis construisez : formulaire → appel à un modèle → réponse affichée ou envoyée.",
+        criteria: ["n8n tourne en local (Docker) et le workflow est sauvegardé","Le workflow s’exécute de bout en bout sur une saisie réelle","Le prompt impose un format de réponse (JSON ou structure fixe)"], proof: "Lien vers le workflow exporté (JSON) ou capture de l’exécution" },
+      { id: "e1-2", title: "Recherche sémantique sur vos propres documents", tool: "Supabase + pgvector", time: "2 h",
+        brief: "Créez une table avec pgvector, insérez une vingtaine d’extraits (par exemple des critères RGAA) et retrouvez les trois plus proches d’une question.",
+        criteria: ["Extension pgvector activée et table créée","20 extraits insérés avec leur embedding","Une requête de similarité retourne les 3 extraits attendus"], proof: "Lien vers le script SQL ou capture des résultats" },
+      { id: "e1-3", title: "Votre premier jeu d’evals", tool: "Tableur ou fichier JSON", time: "1 h 30",
+        brief: "Écrivez 20 cas (question, réponse attendue, critère de réussite) pour l’assistant de l’exercice 1 et notez son taux de réussite.",
+        criteria: ["20 cas dont au moins 5 cas limites","Un critère de réussite observable par cas","Taux de réussite calculé et commenté en 3 lignes"], proof: "Lien vers le fichier des cas" }
+    ]
+  },
+  {
+    id: 2, slug: "module-2", title: "Backend et application utilisateur", hours: "5 à 7 h",
+    goal: "Donner un backend à votre workflow et l’exposer à un utilisateur non technique, sans exposer vos clés.",
+    lessons: [
+      { id: "l2-1", title: "Supabase en quatre briques",
+        body: ["Supabase fournit sur un projet Postgres : l’authentification, la base avec son API générée, le stockage de fichiers et les edge functions (code serveur proche de la base).",
+               "La sécurité repose sur les politiques RLS (row level security) : chaque table dit qui peut lire et écrire quelles lignes. Sans RLS, la clé publique du front donne accès à tout."],
+        sources: [["Documentation Supabase","https://supabase.com/docs"]] },
+      { id: "l2-2", title: "Exposer un workflow à un utilisateur",
+        body: ["Un workflow n8n s’expose par un webhook ; une interface (page vibecodée, bloc WordPress ou app builder comme Softr) appelle ce webhook et affiche la réponse.",
+               "Le test d’un bon produit builder : une personne sans compétence technique peut utiliser l’assistant sans explication."],
+        sources: [["Documentation n8n","https://docs.n8n.io/"],["Le Wagon, programme AI Product Builder","https://blog.lewagon.com/news/ai-product-builder/"]] },
+      { id: "l2-3", title: "Clés, secrets et edge functions",
+        body: ["La clé anonyme de Supabase peut vivre dans le front ; la clé service et toute clé d’API de modèle ne doivent jamais y être. Les appels à un modèle passent par une edge function qui garde la clé côté serveur.",
+               "Même règle pour les coûts : la fonction serveur impose un plafond par utilisateur et journalise les appels."],
+        sources: [["Documentation Supabase","https://supabase.com/docs"]] }
+    ],
+    quiz: [
+      { q: "À quoi servent les politiques RLS dans Supabase ?", a: ["À accélérer les requêtes","À définir qui peut lire et écrire quelles lignes d’une table","À chiffrer la base","À générer l’API"], ok: 1, exp: "RLS est le mécanisme de sécurité des données ; sans politiques, la clé publique du front lit toute la table." },
+      { q: "Quelle clé ne doit jamais apparaître dans le front ?", a: ["La clé anonyme (anon)","La clé service (service_role)","L’URL du projet","L’identifiant du projet"], ok: 1, exp: "La clé service contourne RLS ; elle reste côté serveur, comme les clés de modèle." },
+      { q: "Une edge function Supabase, c’est :", a: ["Une page statique","Du code serveur exécuté près de la base, pour garder les secrets et la logique sensible","Un plugin navigateur","Une table spéciale"], ok: 1, exp: "C’est l’endroit où appeler un modèle de langage avec une clé privée et un plafond de coûts." },
+      { q: "L’authentification par lien magique :", a: ["Exige un mot de passe fort","Envoie un lien de connexion par courriel, sans mot de passe","Ne fonctionne qu’en local","Est réservée aux administrateurs"], ok: 1, exp: "Simple à mettre en place et suffisante pour un prototype ; à compléter par d’autres méthodes en production." },
+      { q: "Un app builder comme Softr sert à :", a: ["Entraîner un modèle","Construire une interface sur une base de données sans code","Héberger des conteneurs","Remplacer Postgres"], ok: 1, exp: "C’est l’outil du jour 2 du programme Le Wagon : une interface rapide sur Airtable ou Supabase." }
+    ],
+    exercises: [
+      { id: "e2-1", title: "Projet Supabase sécurisé", tool: "Supabase", time: "2 h",
+        brief: "Créez un projet, une table de progression et ses politiques RLS, puis une connexion par lien magique.",
+        criteria: ["Table créée avec RLS activée et au moins deux politiques","Connexion par lien magique testée avec deux comptes","Un compte ne voit pas les lignes de l’autre"], proof: "Capture des politiques ou lien vers le script SQL" },
+      { id: "e2-2", title: "Un assistant utilisable par quelqu’un d’autre", tool: "n8n + page web", time: "3 h",
+        brief: "Branchez le workflow du module 1 derrière une interface simple, puis faites-le tester par un collègue sans explication.",
+        criteria: ["Interface accessible au clavier avec états de chargement et d’erreur","Aucune clé d’API dans le code front","Un collègue a réussi une demande sans aide ; sa remarque principale est notée"], proof: "URL de l’interface et remarque du testeur" }
+    ]
+  },
+  {
+    id: 3, slug: "module-3", title: "Vibe coding structuré", hours: "5 à 6 h",
+    goal: "Produire vite avec un agent de code sans perdre la maîtrise : cadrage, itération, outillage MCP, limites de la production.",
+    lessons: [
+      { id: "l3-1", title: "PRD court ou itération : quand choisir l’un ou l’autre",
+        body: ["Un PRD court (objectif, utilisateurs, écrans, règles, hors périmètre) rentabilise un prototype multi-écrans : l’agent travaille sur un cadre stable. L’itération prompt par prompt convient à un écran unique ou à une exploration.",
+               "Dans les deux cas, on décrit le résultat attendu et les contraintes (accessibilité, données, erreurs), pas la façon de coder."],
+        sources: [["Elevation, atelier vibe coding avec Lovable","https://ai.elevationcapital.com/blogs/vibe-coding-lovable"]] },
+      { id: "l3-2", title: "Lovable, Cursor, Claude Code : trois postures",
+        body: ["Lovable part d’un prompt et livre une app React déployée avec backend Supabase : idéal pour une démo en heures. Cursor et Claude Code travaillent dans votre dépôt, avec vos règles et vos tests : idéal pour aller vers la production.",
+               "Un prototype vibecodé n’est pas un produit : revue de code, tests sur les parcours critiques, sécurité des données et accessibilité restent à faire. C’est l’alerte que portent Roman Pichler et les équipes produit sérieuses."],
+        sources: [["Documentation Cursor","https://cursor.com/docs"],["Documentation Claude Code","https://code.claude.com/docs"]] },
+      { id: "l3-3", title: "MCP : donner des outils à l’agent",
+        body: ["Le Model Context Protocol est un standard ouvert pour connecter des outils et des données à un agent. Les documentations Supabase, n8n ou Claude exposent des serveurs MCP : l’agent lit la version à jour au lieu de sa mémoire.",
+               "Brancher un serveur MCP de documentation dans Cursor ou Claude Code réduit les erreurs d’API dès le premier prototype."],
+        sources: [["Documentation Cursor","https://cursor.com/docs"],["Documentation Claude Code","https://code.claude.com/docs"]] }
+    ],
+    quiz: [
+      { q: "Quand un PRD court est-il le plus utile ?", a: ["Pour un écran unique","Pour un prototype multi-écrans au périmètre clair","Jamais, l’itération suffit","Seulement en production"], ok: 1, exp: "Il stabilise le cadre pour l’agent : écrans, règles, hors périmètre." },
+      { q: "MCP, c’est :", a: ["Un modèle d’OpenAI","Un protocole ouvert pour connecter outils et données à un agent","Un framework CSS","Un service d’hébergement"], ok: 1, exp: "Les éditeurs publient des serveurs MCP ; l’agent les appelle comme des outils." },
+      { q: "Ce qui manque le plus souvent à un prototype vibecodé pour la production :", a: ["Une meilleure palette","Tests, sécurité des données et accessibilité","Plus de fonctionnalités","Un logo"], ok: 1, exp: "La vitesse du prototype se paie en dette si personne ne reprend ces points." },
+      { q: "Lovable génère par défaut :", a: ["Du PHP et MySQL","Une app React avec Supabase en backend","Une app native iOS","Un site WordPress"], ok: 1, exp: "React, TypeScript, Tailwind et Supabase : une stack que vous pouvez relire et reprendre dans votre dépôt." },
+      { q: "Quelle habitude limite la dette du vibe coding ?", a: ["Ne jamais relire le code","Une revue de code hebdomadaire et des tests sur les parcours critiques","Changer d’outil chaque semaine","Supprimer les tests"], ok: 1, exp: "La revue et les tests sont ce qui distingue un builder d’un simple opérateur de prompts." }
+    ],
+    exercises: [
+      { id: "e3-1", title: "Même application, deux approches", tool: "Lovable et Claude Code", time: "3 h",
+        brief: "Réalisez un petit tableau de suivi avec Lovable, puis la même chose avec Claude Code dans un dépôt. Notez ce que chaque approche fait gagner et perdre.",
+        criteria: ["Les deux versions fonctionnent et sont déployées","Une note comparative d’une page : vitesse, qualité du code, accessibilité, reprise possible","Un choix argumenté pour la suite du projet"], proof: "Liens vers les deux versions et la note" },
+      { id: "e3-2", title: "Brancher un serveur MCP", tool: "Cursor ou Claude Code", time: "1 h",
+        brief: "Ajoutez le serveur MCP de documentation de Supabase ou de n8n à votre agent et faites-lui corriger un appel d’API à partir de la doc à jour.",
+        criteria: ["Serveur MCP configuré et visible dans l’agent","Une question posée à l’agent a utilisé la documentation","Capture de la réponse avec la source citée"], proof: "Capture de la configuration et de l’échange" }
+    ]
+  },
+  {
+    id: 4, slug: "module-4", title: "Stratégie produit IA", hours: "6 à 8 h",
+    goal: "Cadrer un produit IA comme un PM : problème, hypothèses, KPIs, architecture adaptée au POC, garde-fous et plan de tracking.",
+    lessons: [
+      { id: "l4-1", title: "Cadrer avant de construire",
+        body: ["Un dossier produit tient en une page : le problème et pour qui, les hypothèses les plus risquées, ce que l’on construit et ce que l’on ne construit pas, comment on saura que ça marche.",
+               "La discovery continue (Teresa Torres) relie un résultat visé à des opportunités observées chez les utilisateurs, puis à des solutions et à des tests. Les LLM aident à générer personas et jobs-to-be-done ; la décision reste au PM."],
+        sources: [["Reforge, What does an AI PM do","https://www.reforge.com/blog/what-does-an-ai-pm-do"]] },
+      { id: "l4-2", title: "KPIs et plan de tracking",
+        body: ["Une North Star reflète la valeur livrée (ici : exercices validés avec preuve). Autour d’elle : adoption (sessions, rétention), qualité (score, taux de réussite), coût (appels par utilisateur).",
+               "Le plan de tracking se rédige avant le code : nom de l’événement, déclencheur, propriétés, KPI servi. Mixpanel documente ce parcours plan, implémentation, lancement."],
+        sources: [["Documentation Mixpanel, stratégie analytics","https://docs.mixpanel.com/guides/analytics-strategy"]] },
+      { id: "l4-3", title: "Architecture de POC et garde-fous",
+        body: ["Choisir l’architecture la plus simple compatible avec l’hypothèse : un appel bien formulé si la connaissance tient dans le prompt, un RAG si elle est dans vos documents, un agent seulement si des actions sont nécessaires.",
+               "Les garde-fous se décident au cadrage : limites de périmètre, refus explicites, plafond de coût, journalisation, et un eval de régression dès le premier déploiement."],
+        sources: [["Anthropic, Building effective agents","https://www.anthropic.com/engineering/building-effective-agents"],["Anthropic, Demystifying evals for AI agents","https://anthropic.com/engineering/demystifying-evals-for-ai-agents"]] }
+    ],
+    quiz: [
+      { q: "Une North Star, c’est :", a: ["Le chiffre d’affaires","Une métrique qui reflète la valeur réellement livrée aux utilisateurs","Le nombre de fonctionnalités","Le score Lighthouse"], ok: 1, exp: "Elle guide les arbitrages ; les autres KPIs l’expliquent ou la protègent." },
+      { q: "Quand écrire le plan de tracking ?", a: ["Après le lancement","Avant la première ligne de code","Seulement si un analyste le demande","Jamais pour un POC"], ok: 1, exp: "Sinon les événements manquent au moment de mesurer l’hypothèse." },
+      { q: "La connaissance nécessaire tient dans le prompt. Quelle architecture ?", a: ["Un agent multi-outils","Un appel simple au modèle","Un RAG complet","Un fine-tuning"], ok: 1, exp: "Le motif le plus simple d’abord ; le RAG se justifie quand la connaissance est dans vos documents." },
+      { q: "Un garde-fou, c’est par exemple :", a: ["Une couleur de bouton","Une limite de périmètre, un refus explicite ou un plafond de coût","Un slogan","Une police de caractères"], ok: 1, exp: "Les garde-fous se décident au cadrage et se vérifient par des evals." },
+      { q: "L’opportunity solution tree relie :", a: ["Les équipes et leurs managers","Un résultat visé, des opportunités, des solutions et des tests","Les écrans d’une app","Les sprints d’un trimestre"], ok: 1, exp: "C’est l’outil central de la discovery continue de Teresa Torres." }
+    ],
+    exercises: [
+      { id: "e4-1", title: "Dossier produit d’un cas d’usage réel", tool: "Notion ou doc", time: "4 h",
+        brief: "Cadrez un cas d’usage IA de votre contexte professionnel : problème, utilisateurs, hypothèses, KPIs, architecture de POC, garde-fous, plan de tracking.",
+        criteria: ["Une page, relue par un PM ou un pair","Trois hypothèses classées par risque","Un plan de tracking de 8 à 12 événements"], proof: "Lien vers le dossier" },
+      { id: "e4-2", title: "Mesurer votre propre prototype", tool: "Mixpanel", time: "2 h",
+        brief: "Posez Mixpanel sur le prototype du module 3 avec cinq événements et construisez un funnel et une courbe de rétention.",
+        criteria: ["5 événements nommés selon le plan et visibles dans Mixpanel","Un funnel de 3 étapes construit","Une première lecture écrite en 3 lignes"], proof: "Capture du funnel" }
+    ]
+  },
+  {
+    id: 5, slug: "module-5", title: "Projet final", hours: "8 à 12 h",
+    goal: "Livrer un produit IA déployé, mesuré et démontrable : c’est la pièce de portfolio.",
+    lessons: [
+      { id: "l5-1", title: "Définition de terminé",
+        body: ["Terminé veut dire : déployé sur une URL accessible, mesuré par au moins un KPI réel, démontrable en trois minutes, documenté par une page.",
+               "Le produit n’a pas besoin d’être grand ; il a besoin d’être complet sur son périmètre et honnête sur ses limites."],
+        sources: [["Le Wagon, programme AI Product Builder","https://blog.lewagon.com/news/ai-product-builder/"]] },
+      { id: "l5-2", title: "Le pitch en dix slides",
+        body: ["Problème et pour qui, preuve du problème, solution et démo, architecture en une image, ce qui a été mesuré, ce que vous avez appris, limites et suite, ce que vous demandez.",
+               "Une slide, une idée. La démo vaut plus que les slides."],
+        sources: [] },
+      { id: "l5-3", title: "La démo vidéo de trois minutes",
+        body: ["Enregistrez un parcours réel, pas un diaporama : le problème en 20 secondes, le produit en action, le résultat mesuré, une limite assumée.",
+               "Publiez la vidéo avec sous-titres : c’est aussi une preuve d’accessibilité."],
+        sources: [] }
+    ],
+    quiz: [
+      { q: "Quel ordre pour un pitch produit ?", a: ["Solution, équipe, prix","Problème, preuve, solution et démo, impact mesuré, suite","Architecture puis fonctionnalités","Historique du projet"], ok: 1, exp: "On part du problème et on termine par ce qui a été mesuré et ce qui vient ensuite." },
+      { q: "Une bonne démo vidéo montre :", a: ["Des slides commentées","Un parcours réel dans le produit","Le code source","Le dépôt Git"], ok: 1, exp: "Le public doit voir le produit fonctionner sur un cas concret." },
+      { q: "Un produit est « terminé » quand :", a: ["Le code compile","Il est déployé, mesuré, démontrable et documenté","Toutes les idées sont implémentées","Le design est validé"], ok: 1, exp: "Complet sur son périmètre, honnête sur ses limites." },
+      { q: "La rétro de fin de sprint tient en :", a: ["Un rapport de dix pages","Cinq lignes : ce qui a marché, ce qui a coûté, ce qu’on change","Une réunion de deux heures","Rien, on passe au suivant"], ok: 1, exp: "Courte et écrite, c’est elle qui raconte la posture produit en entretien." }
+    ],
+    exercises: [
+      { id: "e5-1", title: "Produit déployé", tool: "Votre stack", time: "6 h",
+        brief: "Déployez le produit cadré au module 4 sur une URL accessible, avec tracking actif et un eval de régression.",
+        criteria: ["URL publique fonctionnelle, accessible au clavier","Événements visibles dans l’outil analytics","Eval de régression de 20 cas qui passe"], proof: "URL du produit" },
+      { id: "e5-2", title: "Pitch et vidéo", tool: "Slides et capture vidéo", time: "3 h",
+        brief: "Produisez le pitch de dix slides et la démo vidéo de trois minutes, sous-titrée.",
+        criteria: ["10 slides maximum, une idée par slide","Vidéo de 3 minutes au plus, sous-titrée","Les deux ont été présentés à au moins une personne"], proof: "Liens vers le pitch et la vidéo" },
+      { id: "e5-3", title: "Page portfolio", tool: "Page web", time: "2 h",
+        brief: "Une page qui raconte le projet : problème, démarche, produit, mesures, apprentissages, avec liens vers le produit, le pitch et la vidéo.",
+        criteria: ["Page en ligne et accessible","Les trois liens fonctionnent","Les limites du projet sont écrites"], proof: "URL de la page" }
+    ]
+  }
+];
+
+const TOOLS = [
+  { slug: "n8n", name: "n8n", cat: "Automatisation", step: 1, doc: "https://docs.n8n.io/",
+    what: "Relier des applications et des modèles d’IA par des blocs (nœuds) pour automatiser une tâche, sans écrire une application complète. Open source, il s’héberge en Docker sur votre machine ou un serveur.",
+    examples: [
+      { t: "Synthèse automatique des comptes rendus d’atelier", flow: ["Fichier déposé dans un dossier", "Extraction du texte", "Claude résume en décisions et actions", "Message Slack au chef de projet"],
+        d: "Après chaque atelier client, plus personne ne retape les décisions : le résumé arrive dans le canal du projet avec les actions et leurs responsables." },
+      { t: "Pré-qualification d’un appel d’offres", flow: ["PDF du cahier des charges", "Le modèle extrait budget, délais, livrables", "Ligne ajoutée au tableau de suivi"],
+        d: "L’équipe commerciale voit en un coup d’œil si l’AO vaut une réponse, avant de lire 80 pages." },
+      { t: "Veille hebdomadaire sur vos outils", flow: ["Chaque lundi 8 h", "Lecture des changelogs (Claude Code, Lovable, Supabase)", "Résumé en 5 points", "Courriel"],
+        d: "La veille demandée dans l’offre devient une habitude qui tourne seule ; vous n’avez plus qu’à lire." }
+    ],
+    try: "Lancez n8n en local : docker run -it --rm -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n, ouvrez http://localhost:5678, puis créez un workflow « Schedule Trigger → HTTP Request → Set » qui récupère une page et en garde le titre.",
+    use: "Tâches répétitives qui traversent plusieurs outils ; prototyper un agent avant de le coder ; garder les données chez soi.",
+    avoid: "Interface utilisateur riche ; logique métier complexe à maintenir des années ; équipe qui ne peut pas héberger de serveur." },
+
+  { slug: "make-zapier", name: "Make et Zapier", cat: "Automatisation", step: 1, doc: "https://zapier.com/apps",
+    what: "Les équivalents de n8n en service hébergé : rien à installer, des milliers de connecteurs prêts à l’emploi, facturés à l’usage.",
+    examples: [
+      { t: "Lead entrant vers l’équipe", flow: ["Formulaire du site", "Fiche créée dans le CRM", "Notification Slack"], d: "Le cas d’école : quelques minutes de configuration, aucune infrastructure." },
+      { t: "Tri des demandes de support", flow: ["Nouveau courriel", "Le modèle classe la demande", "Ticket créé dans la bonne file"], d: "Une étape d’IA s’insère comme n’importe quel autre bloc." }
+    ],
+    try: "Créez un compte gratuit sur l’un des deux et reproduisez le premier exemple de n8n : comparez le temps passé et ce que vous contrôlez.",
+    use: "Le client utilise déjà l’un d’eux ; besoin rapide sans serveur ; utilisateurs non techniques qui maintiendront le flux.",
+    avoid: "Données sensibles qui ne doivent pas sortir ; gros volumes où la facturation à l’opération explose." },
+
+  { slug: "supabase", name: "Supabase", cat: "Backend", step: 2, doc: "https://supabase.com/docs",
+    what: "Une base Postgres hébergée avec, autour, tout ce qu’un prototype attend d’un backend : comptes utilisateurs, stockage de fichiers, API générée automatiquement et fonctions serveur.",
+    examples: [
+      { t: "Le backend d’un prototype Lovable", flow: ["Tables et comptes créés", "Règles RLS par utilisateur", "Interface Lovable branchée"], d: "C’est le backend par défaut de Lovable : vous reprenez la main sur les données et la sécurité." },
+      { t: "Une base de connaissances pour un RAG", flow: ["Critères RGAA découpés", "Embeddings stockés avec pgvector", "Recherche des passages proches d’une question"], d: "Un assistant qui répond à partir de votre référentiel, pas de la mémoire du modèle." },
+      { t: "Appeler Claude sans exposer la clé", flow: ["Front de l’app", "Edge function avec la clé et un plafond", "API Claude"], d: "La clé reste côté serveur et chaque utilisateur a une limite d’appels par jour." }
+    ],
+    try: "Créez un projet gratuit, une table « notes » avec RLS activée et une politique « chacun lit ses lignes », puis vérifiez avec deux comptes qu’aucun ne voit les notes de l’autre.",
+    use: "Prototype qui a besoin de comptes et de données réelles ; RAG sur vos documents ; backend d’un outil interne.",
+    avoid: "Site vitrine sans données utilisateur (un WordPress suffit) ; équipe qui ne veut pas écrire de règles de sécurité." },
+
+  { slug: "lovable", name: "Lovable", cat: "Prototypage", step: 3, doc: "https://docs.lovable.dev/",
+    what: "Décrire une application en français ou en anglais et obtenir en quelques minutes une app React déployée, avec backend Supabase, que l’on fait évoluer par conversation.",
+    examples: [
+      { t: "Un parcours testable avant de chiffrer", flow: ["Description du parcours de demande de subvention", "App déployée", "Test avec 5 utilisateurs"], d: "Vous validez l’ordre des étapes et les champs demandés avec de vrais utilisateurs avant d’engager un développement." },
+      { t: "Un outil interne jetable", flow: ["Liste des recommandations d’audit", "Tableau avec statuts et responsables", "Partagé à l’équipe"], d: "Un besoin de trois mois ne mérite pas un projet : il mérite une après-midi." },
+      { t: "Mesurer l’intérêt pour une idée", flow: ["Page de présentation", "Formulaire d’inscription", "Comptage des inscrits"], d: "Une hypothèse de valeur testée en un jour, avec un chiffre à la clé." }
+    ],
+    try: "Demandez « un tableau de suivi des recommandations d’audit accessibilité, avec critère RGAA, priorité, statut et responsable », puis passez l’app générée au clavier et au lecteur d’écran : notez ce qui manque.",
+    use: "Démo client, test utilisateur, validation d’hypothèse, outil interne de courte durée.",
+    avoid: "Produit qui part en production sans relecture : le code se synchronise sur GitHub, mais tests, sécurité et accessibilité restent à faire." },
+
+  { slug: "claude-code", name: "Claude Code", cat: "Agent de code", step: 3, doc: "https://code.claude.com/docs",
+    what: "Un agent qui travaille dans votre dépôt : il lit le code, modifie les fichiers, lance les commandes et les tests, depuis le terminal, l’éditeur, l’app de bureau ou le web.",
+    examples: [
+      { t: "Reprendre un prototype pour la production", flow: ["Dépôt GitLab du prototype", "Ajout des tests et corrections d’accessibilité", "Pipeline CI"], d: "Le passage du prototype vibecodé au produit, que les sources sérieuses citent comme le vrai travail du builder." },
+      { t: "Un audit outillé sur un thème WordPress", flow: ["« Liste les images sans alternative et les titres mal hiérarchisés »", "Rapport et diff proposé", "Relecture et fusion"], d: "Votre expertise RGAA reste la règle ; l’agent fait la recherche fastidieuse." },
+      { t: "Un script ponctuel", flow: ["Export CSV d’un ancien site", "Conversion en blocs Gutenberg", "Import vérifié"], d: "Ce qui prenait une journée de script devient une heure de vérification." }
+    ],
+    try: "Dans un dépôt existant, créez un fichier CLAUDE.md avec trois règles du projet (accessibilité, conventions, tests), puis demandez une petite évolution et relisez le diff avant de l’accepter.",
+    use: "Tâches longues ou multi-fichiers, scripts, reprise de code existant, travail sans quitter le terminal.",
+    avoid: "Accepter un diff sans le lire ; donner accès à des secrets de production." },
+
+  { slug: "cursor", name: "Cursor", cat: "Agent de code", step: 3, doc: "https://cursor.com/docs",
+    what: "Un éditeur de code dérivé de VS Code avec un agent intégré, des règles par projet et la connexion à des serveurs MCP.",
+    examples: [
+      { t: "Faire évoluer un composant du design system", flow: ["Règles du projet chargées", "L’agent modifie le composant et ses variantes", "Diff visuel dans l’éditeur"], d: "Vous gardez la vue fichier par fichier, utile quand chaque ligne de CSS compte." },
+      { t: "Comprendre une base de code inconnue", flow: ["Question sur le dépôt", "L’agent trace le parcours d’une requête", "Points d’entrée identifiés"], d: "Le premier jour sur un projet client devient productif." },
+      { t: "Imposer l’accessibilité par défaut", flow: ["Règle « tout bouton a un nom accessible »", "Appliquée à chaque génération"], d: "Les règles de projet transforment votre expertise en garde-fou permanent." }
+    ],
+    try: "Ajoutez une règle de projet sur l’accessibilité, demandez un composant de modale, puis vérifiez focus, échappement et rôle ARIA.",
+    use: "Travail fin dans l’éditeur, revue visuelle des modifications, équipe déjà sur VS Code.",
+    avoid: "Le choisir contre Claude Code par principe : les deux se complètent selon la tâche." },
+
+  { slug: "mcp", name: "MCP", cat: "Protocole", step: 3, doc: "https://modelcontextprotocol.io/",
+    what: "Le Model Context Protocol est un standard ouvert pour brancher des outils et des données sur un agent : documentation, base de données, maquettes, tickets.",
+    examples: [
+      { t: "L’agent lit votre vrai schéma de base", flow: ["Serveur MCP Supabase", "L’agent consulte les tables", "Requêtes et migrations justes du premier coup"], d: "Fini les colonnes inventées par le modèle." },
+      { t: "Une documentation toujours à jour", flow: ["Serveur MCP de la doc n8n", "Question de l’agent", "Réponse avec la version actuelle"], d: "La mémoire du modèle date ; la doc du serveur non." },
+      { t: "Intégrer depuis la maquette", flow: ["Serveur MCP Figma", "L’agent lit les composants et variables", "Code aligné sur le design system"], d: "Le lien direct maquette vers code, votre terrain d’intégrateur." }
+    ],
+    try: "Ajoutez un serveur MCP de documentation à Claude Code ou Cursor et posez une question dont la réponse a changé récemment.",
+    use: "Dès qu’un agent doit agir sur des données ou outils réels plutôt que deviner.",
+    avoid: "Brancher un serveur dont vous ne connaissez pas l’éditeur : il agit avec vos droits." },
+
+  { slug: "claude-api", name: "API Claude", cat: "Modèles d’IA", step: 1, doc: "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests",
+    what: "Appeler un modèle depuis un workflow, une fonction serveur ou une app, avec un format de réponse imposé pour que le reste du produit puisse l’exploiter.",
+    examples: [
+      { t: "Classer des retours utilisateurs", flow: ["200 verbatims", "Le modèle renvoie thème et sévérité en JSON", "Tableau trié"], d: "La synthèse d’une vague d’entretiens passe de deux jours à deux heures, relecture comprise." },
+      { t: "Préparer une discovery", flow: ["Notes d’entretiens", "Personas et jobs-to-be-done proposés", "Critique et décision par le PM"], d: "Le geste « LLM pour la discovery » de l’offre : le modèle propose, vous tranchez." },
+      { t: "Un juge pour vos evals", flow: ["Réponses de l’assistant", "Notation selon une grille écrite", "Comparaison avec vos propres notes"], d: "Vous mesurez la qualité à chaque changement de prompt au lieu de l’estimer." }
+    ],
+    try: "Envoyez un même verbatim avec et sans consigne de format JSON, et comparez ce que votre code peut en faire.",
+    use: "Toute étape qui demande de comprendre ou produire du texte dans un produit ou un workflow.",
+    avoid: "Données personnelles sensibles sans cadre ; décision finale sans eval ni relecture humaine." },
+
+  { slug: "mixpanel", name: "Mixpanel", cat: "Analytics produit", step: 4, doc: "https://docs.mixpanel.com/guides/analytics-strategy",
+    what: "Mesurer ce que font les utilisateurs, action par action (événements), pour savoir si une fonctionnalité crée de la valeur.",
+    examples: [
+      { t: "Où les utilisateurs décrochent", flow: ["Inscription", "Première action utile", "Retour la semaine suivante"], d: "Un funnel montre l’étape à corriger en priorité, chiffres à l’appui." },
+      { t: "Rétention par cohorte", flow: ["Cohorte par semaine d’inscription", "Part revenue en semaine 2, 3, 4"], d: "La courbe dit si le produit retient ou s’il plaît seulement le premier jour." },
+      { t: "Avant et après une nouveauté", flow: ["Cohorte avant la sortie", "Cohorte après", "Écart de conversion"], d: "Ce qui transforme une intuition en argument pour la roadmap." }
+    ],
+    try: "Posez trois événements sur un prototype (session démarrée, action clé, objectif atteint), puis construisez un funnel de trois étapes.",
+    use: "Produit avec des utilisateurs réels et une hypothèse de valeur à vérifier.",
+    avoid: "Tout tracker sans plan ; oublier le consentement (RGPD) sur un site public." },
+
+  { slug: "notion-jira", name: "Notion et Jira", cat: "Pilotage produit", step: 4, doc: "https://www.notion.com/help",
+    what: "Notion pour écrire et organiser la réflexion produit ; Jira pour piloter le backlog et les sprints avec l’équipe technique.",
+    examples: [
+      { t: "Le dossier produit d’une page", flow: ["Problème et utilisateurs", "Hypothèses classées par risque", "KPIs et plan de tracking"], d: "Le document qui aligne client et équipe avant le premier sprint." },
+      { t: "Une base des hypothèses", flow: ["Hypothèse", "Test prévu", "Résultat et décision"], d: "La trace de la discovery continue, réutilisable en soutenance." },
+      { t: "Du dossier au backlog", flow: ["Epics issues du dossier", "User stories avec critères d’acceptation", "Sprint planifié dans Jira"], d: "La posture PO demandée dans l’offre, rendue visible." }
+    ],
+    try: "Transformez un de vos carnets d’étape en dossier produit d’une page, puis en trois user stories avec critères d’acceptation.",
+    use: "Toute mission produit : Notion pour penser, Jira pour livrer avec l’équipe.",
+    avoid: "Des dizaines de pages que personne ne relit ; un backlog sans priorité." }
+];
+const EX_TOOLS = { "e1-1": ["n8n"], "e1-2": ["supabase"], "e1-3": ["claude-api"], "e2-1": ["supabase"], "e2-2": ["n8n", "supabase"], "e3-1": ["lovable", "claude-code"], "e3-2": ["mcp", "cursor", "claude-code"], "e4-1": ["notion-jira"], "e4-2": ["mixpanel"], "e5-1": ["claude-code", "supabase", "mixpanel"] };
+const LESSON_TOOLS = { "l1-1": ["n8n", "claude-api"], "l1-2": ["n8n", "make-zapier"], "l1-3": ["supabase"], "l1-4": ["claude-api"], "l2-1": ["supabase"], "l2-2": ["n8n", "lovable"], "l2-3": ["supabase", "claude-api"], "l3-1": ["lovable"], "l3-2": ["lovable", "cursor", "claude-code"], "l3-3": ["mcp"], "l4-1": ["notion-jira", "claude-api"], "l4-2": ["mixpanel"], "l4-3": ["claude-api"] };
+const tool = s => TOOLS.find(t => t.slug === s);
+const toolLinks = slugs => (slugs || []).map(s => `<a href="#outil-${s}">${esc(tool(s).name)}</a>`).join(", ");
+
+const PASS = 80;
+const KEY = "builder-path-v1";
+let state = {};
+let dbDoc = null, saveTimer = null;
+
+function norm() {
+  const d = { lessons: {}, quiz: {}, exercises: {}, unlocked: {}, notes: {}, sessions: [], session: null, goalH: 8, ui: { lesson: {} }, last: null };
+  for (const k in d) if (state[k] === undefined || state[k] === null && k !== "session" && k !== "last") state[k] = d[k];
+  if (!state.ui.lesson) state.ui.lesson = {};
+}
+function loadLocal() { try { const raw = localStorage.getItem(KEY); if (raw) state = JSON.parse(raw); } catch (e) {} norm(); }
+function saveLocal() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+function persist(touch = true) {
+  if (touch) state.last = new Date().toISOString();
+  saveLocal();
+  if (dbDoc) { clearTimeout(saveTimer); saveTimer = setTimeout(() => { dbDoc.set(JSON.parse(JSON.stringify(state))).catch(() => {}); }, 700); }
+}
+async function connectDb() {
+  try {
+    const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+    if (!db || !user) return;
+    dbDoc = db.doc("data/users/" + (await user.id()) + "/progress");
+    const snap = await dbDoc.get();
+    if (snap.exists) { state = snap.data(); norm(); saveLocal(); render(); }
+    else if (state.last) dbDoc.set(JSON.parse(JSON.stringify(state))).catch(() => {});
+  } catch (e) {}
+}
+
+/* ---------- Calculs ---------- */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const best = m => (state.quiz[m.id] && state.quiz[m.id].best) || 0;
+const passed = m => best(m) >= PASS;
+const exState = e => state.exercises[e.id] || (state.exercises[e.id] = { criteria: [], proof: "", status: "todo" });
+const isValid = e => (state.exercises[e.id] || {}).status === "validated";
+const validatedCount = m => m.exercises.filter(isValid).length;
+const lessonsRead = m => m.lessons.filter(l => state.lessons[l.id]).length;
+const noteDone = m => { const n = state.notes[m.id] || {}; return ["got", "stuck", "change"].every(k => (n[k] || "").trim()); };
+const isUnlocked = m => m.id === 1 || state.unlocked[m.id] || passed(MODULES[m.id - 2]);
+const isDone = m => passed(m) && validatedCount(m) === m.exercises.length;
+const total = MODULES.reduce((n, m) => n + m.exercises.length, 0);
+const built = () => MODULES.reduce((n, m) => n + validatedCount(m), 0);
+const fmtMin = n => n < 60 ? n + " min" : Math.floor(n / 60) + " h " + String(n % 60).padStart(2, "0");
+function weekStart() { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return d; }
+const weekMin = () => state.sessions.filter(s => new Date(s.start) >= weekStart()).reduce((a, s) => a + s.min, 0);
+const elapsed = () => state.session ? Math.max(0, Math.round((Date.now() - new Date(state.session.start)) / 60000)) : 0;
+
+function nextAction() {
+  for (const m of MODULES) {
+    if (!isUnlocked(m)) continue;
+    const i = m.lessons.findIndex(l => !state.lessons[l.id]);
+    if (i >= 0) return { m, what: "Lire la fiche « " + m.lessons[i].title + " »", time: "15 min", href: "#" + m.slug + "-fiches", lesson: i };
+    if (!passed(m)) return { m, what: "Réussir le quiz du module", time: m.quiz.length * 2 + " min", href: "#" + m.slug + "-quiz" };
+    const e = m.exercises.find(x => !isValid(x));
+    if (e) return { m, what: e.title, time: e.time, href: "#" + m.slug + "-exercices" };
+    if (!noteDone(m)) return { m, what: "Écrire la rétro du module dans votre carnet", time: "10 min", href: "#" + m.slug + "-carnet" };
+  }
+  return null;
+}
+
+/* ---------- Routage ---------- */
+const VIEWS = ["fiches", "quiz", "exercices", "carnet"];
+function parse() {
+  const h = (location.hash || "#accueil").slice(1);
+  for (const m of MODULES) {
+    if (h === m.slug) return { m, view: "apercu", key: h };
+    for (const v of VIEWS) if (h === m.slug + "-" + v) return { m, view: v, key: h };
+  }
+  if (h === "outils") return { m: null, view: "outils", key: h };
+  if (h.startsWith("outil-") && tool(h.slice(6))) return { m: null, view: "outil", tool: tool(h.slice(6)), key: h };
+  return { m: null, view: "accueil", key: "accueil" };
+}
+const steps = m => [
+  { v: "fiches", name: "Fiches", status: lessonsRead(m) + "/" + m.lessons.length, done: lessonsRead(m) === m.lessons.length, d: m.lessons.length + " fiches courtes avec leurs sources" },
+  { v: "quiz", name: "Quiz", status: best(m) ? best(m) + " %" : "à faire", done: passed(m), d: m.quiz.length + " questions, " + PASS + " % pour ouvrir l’étape suivante" },
+  { v: "exercices", name: "Exercices", status: validatedCount(m) + "/" + m.exercises.length, done: validatedCount(m) === m.exercises.length, d: "Sur les vrais outils, validés par une preuve" },
+  { v: "carnet", name: "Carnet", status: noteDone(m) ? "écrit" : "à écrire", done: noteDone(m), d: "Trois questions pour faire le point seul" }
+];
+
+/* ---------- Rendu : en-tête et sentier ---------- */
+function renderChrono() {
+  document.getElementById("chrono").innerHTML = state.session
+    ? `<span class="live">Séance en cours, <span id="elapsed">${fmtMin(elapsed())}</span></span><button class="btn" data-act="stop">Terminer la séance</button>`
+    : `<span class="small muted">${fmtMin(weekMin())} cette semaine</span><button class="btn" data-act="start">Démarrer une séance</button>`;
+}
+function renderTrail(r) {
+  const html = `<a class="homelink" href="#accueil" ${r.view === "accueil" ? 'aria-current="page"' : ""}>Tableau de bord</a><a class="homelink sub2" href="#outils" ${r.view === "outils" || r.view === "outil" ? 'aria-current="page"' : ""}>Boîte à outils</a><ol class="trail">` + MODULES.map(m => {
+    const cls = isDone(m) ? "done" : !isUnlocked(m) ? "locked" : (lessonsRead(m) || best(m) || validatedCount(m)) ? "started" : "todo";
+    const status = isDone(m) ? "terminée" : !isUnlocked(m) ? "verrouillée" : m.hours;
+    const open = r.m && r.m.id === m.id && isUnlocked(m);
+    const sub = open ? `<ul class="substeps">${steps(m).map(s => `<li><a href="#${m.slug}-${s.v}" ${r.key === m.slug + "-" + s.v ? 'aria-current="page"' : ""}>${s.name}<span>${s.status}</span></a></li>`).join("")}</ul>` : "";
+    return `<li class="stage ${cls}"><a href="#${m.slug}" ${r.key === m.slug ? 'aria-current="page"' : ""}><span class="blaze" aria-hidden="true"></span><span class="t">${esc(m.title)}<small>Étape ${m.id}, ${status}</small></span></a>${sub}</li>`;
+  }).join("") + "</ol>";
+  document.getElementById("trail").innerHTML = html;
+}
+
+/* ---------- Rendu : vues ---------- */
+function viewHome() {
+  const na = nextAction(), wm = weekMin(), goal = state.goalH * 60, n = built();
+  const list = MODULES.flatMap(m => m.exercises.filter(isValid).map(e => ({ m, e, s: state.exercises[e.id] })));
+  const recent = state.sessions.slice(-5).reverse();
+  return `<section class="block">
+    <div class="next">
+      <h2>${na ? "Votre prochaine étape" : "Parcours terminé"}</h2>
+      ${na ? `<p class="what">${esc(na.what)}</p>
+      <p class="where">Étape ${na.m.id}, ${esc(na.m.title)}. Environ ${esc(na.time)}.</p>
+      <div class="row"><a class="btn main" href="${na.href}" ${na.lesson != null ? `data-lesson="${na.m.id}:${na.lesson}"` : ""}>Y aller</a>${state.session ? "" : `<button class="btn" data-act="start-go" data-href="${na.href}" ${na.lesson != null ? `data-lesson="${na.m.id}:${na.lesson}"` : ""}>Démarrer une séance et y aller</button>`}</div>`
+      : `<p class="what">Il reste à présenter ce que vous avez construit.</p><p class="where">Relisez vos carnets avant l’entretien : ils racontent votre démarche mieux qu’un CV.</p>`}
+    </div>
+  </section>
+  <section class="block" aria-labelledby="h-week">
+    <h2 id="h-week">Cette semaine</h2>
+    <p><span class="bigfig">${fmtMin(wm)}</span> <span class="muted">sur ${state.goalH} h prévues</span></p>
+    <div class="meter ${wm >= goal ? "ok" : ""}" aria-hidden="true"><span style="width:${Math.min(100, Math.round(wm / goal * 100))}%"></span></div>
+    <div class="row" style="margin:12px 0 4px"><label for="goal">Objectif hebdomadaire</label>
+      <select id="goal" class="field" style="width:auto">${[4, 6, 8, 10, 12].map(h => `<option value="${h}" ${h === state.goalH ? "selected" : ""}>${h} h</option>`).join("")}</select></div>
+    ${recent.length ? `<h3>Dernières séances</h3><ul class="plain">${recent.map(s => `<li><span>${new Date(s.start).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}${s.module ? `, étape ${s.module}` : ""}</span><span class="muted">${fmtMin(s.min)}</span></li>`).join("")}</ul>`
+      : `<p class="muted small">Lancez le chrono en début de séance : le temps passé s’ajoute ici, semaine par semaine.</p>`}
+  </section>
+  <section class="block" aria-labelledby="h-built">
+    <h2 id="h-built">Ce que vous avez construit</h2>
+    <p><span class="bigfig">${n}</span> <span class="muted">exercice${n > 1 ? "s" : ""} validé${n > 1 ? "s" : ""} sur ${total}, chacun avec sa preuve</span></p>
+    ${list.length ? `<ul class="plain">${list.map(x => `<li><span>${esc(x.e.title)}<br><span class="small muted">Étape ${x.m.id}, ${esc(x.e.tool)}</span></span><span class="small">${/^https?:\/\//.test(x.s.proof.trim()) ? `<a href="${esc(x.s.proof.trim())}" target="_blank" rel="noopener">Voir la preuve</a>` : esc(x.s.proof)}</span></li>`).join("")}</ul>`
+      : `<p class="muted">Rien encore. Le premier exercice vous attend à l’étape 1 : un workflow n8n qui tourne en Docker.</p>`}
+    <p style="margin-top:16px"><button class="btn link" data-act="export">Copier toute ma progression (JSON)</button></p>
+  </section>`;
+}
+
+function lockedView(m) {
+  const p = MODULES[m.id - 2];
+  return `<section class="block"><h2>${esc(m.title)}</h2><p class="muted">Étape ${m.id} sur 5, environ ${esc(m.hours)}.</p>
+    <div class="locknote"><p>Cette étape s’ouvre quand le quiz de l’étape ${p.id} atteint ${PASS} %. Votre meilleur score : ${best(p) || 0} %.</p>
+    <div class="row"><a class="btn main" href="#${p.slug}-quiz">Aller au quiz de l’étape ${p.id}</a><button class="btn link" data-act="unlock" data-m="${m.id}">Ouvrir quand même</button></div></div></section>`;
+}
+
+function viewOverview(m) {
+  const ss = steps(m);
+  return `<section class="block"><h2>${esc(m.title)}</h2><p class="muted">Étape ${m.id} sur 5, environ ${esc(m.hours)}.</p><p>${esc(m.goal)}</p>
+    <div class="meter ${isDone(m) ? "ok" : ""}" aria-hidden="true"><span style="width:${Math.round((lessonsRead(m) + (passed(m) ? 1 : 0) + validatedCount(m) + (noteDone(m) ? 1 : 0)) / (m.lessons.length + m.exercises.length + 2) * 100)}%"></span></div></section>
+  <section class="block"><h2>Dans l’ordre</h2><ol class="steps">${ss.map(s => `<li class="${s.done ? "done" : ""}"><div><strong>${s.name}</strong><p class="d">${s.d}</p></div><a class="btn ${s.done ? "" : "main"}" href="#${m.slug}-${s.v}">${s.done ? "Revoir" : "Ouvrir"}<span class="sr-only"> ${s.name.toLowerCase()}</span></a></li>`).join("")}</ol></section>${(() => { const s = [...new Set([...m.lessons.map(l => LESSON_TOOLS[l.id] || []), ...m.exercises.map(e => EX_TOOLS[e.id] || [])].flat())]; return s.length ? `<section class="block"><h2>Les outils de l’étape</h2><p class="muted">À quoi ils servent, avec des exemples concrets et un essai de 15 minutes.</p><div class="tools">${s.map(card).join("")}</div></section>` : ""; })()}`;
+}
+
+const card = s => { const x = tool(s); return `<a class="toolcard" href="#outil-${x.slug}"><strong>${esc(x.name)}</strong><span class="c">${esc(x.cat)}, étape ${x.step}</span><span class="w">${esc(x.what.split(/(?<=[.:])\s/)[0])}</span></a>`; };
+
+function viewTools() {
+  const sorted = [...TOOLS].sort((a, b) => a.step - b.step);
+  return `<section class="block"><h2>Boîte à outils</h2>
+    <p>À quoi sert chaque outil du parcours, avec des exemples tirés du quotidien d’une agence digitale, un essai de 15 minutes et les cas où il vaut mieux s’en passer.</p>
+    <div class="tools">${sorted.map(x => card(x.slug)).join("")}</div></section>`;
+}
+
+function viewTool(x) {
+  const i = TOOLS.indexOf(x), prev = TOOLS[i - 1], next = TOOLS[i + 1];
+  const used = MODULES.flatMap(m => m.exercises.filter(e => (EX_TOOLS[e.id] || []).includes(x.slug)).map(e => ({ m, e })));
+  return `<section class="block"><p class="small"><a href="#outils">Boîte à outils</a></p>
+    <h2>${esc(x.name)}</h2><p class="muted">${esc(x.cat)}, abordé à l’étape ${x.step} : <a href="#module-${x.step}">${esc(MODULES[x.step - 1].title)}</a></p>
+    <h3>À quoi ça sert</h3><p>${esc(x.what)}</p></section>
+  <section class="block"><h2>Exemples concrets</h2>
+    ${x.examples.map(ex => `<article class="usecase"><h4>${esc(ex.t)}</h4><ol class="flow" aria-label="Enchaînement">${ex.flow.map(f => `<li><span>${esc(f)}</span></li>`).join("")}</ol><p>${esc(ex.d)}</p></article>`).join("")}
+  </section>
+  <section class="block"><h2>À essayer en 15 minutes</h2><div class="try"><p style="margin:0">${esc(x.try).replace(/(docker run [^,]+)/, '<code>$1</code>')}</p></div></section>
+  <section class="block pair"><div><h3 style="margin-top:0">Quand l’utiliser</h3><p>${esc(x.use)}</p></div><div><h3 style="margin-top:0">Quand l’éviter</h3><p>${esc(x.avoid)}</p></div></section>
+  <section class="block"><p><a href="${x.doc}" target="_blank" rel="noopener">Documentation officielle de ${esc(x.name)}</a></p>
+    ${used.length ? `<h3>Dans le parcours</h3><ul class="plain">${used.map(u => `<li><a href="#${u.m.slug}-exercices">${esc(u.e.title)}</a><span class="muted small">Étape ${u.m.id}${isValid(u.e) ? ", validé" : ""}</span></li>`).join("")}</ul>` : ""}
+    <div class="row" style="margin-top:16px">${prev ? `<a class="btn" href="#outil-${prev.slug}">${esc(prev.name)}</a>` : ""}${next ? `<a class="btn main" href="#outil-${next.slug}">Outil suivant : ${esc(next.name)}</a>` : ""}</div></section>`;
+}
+
+function viewLessons(m) {
+  const n = m.lessons.length;
+  let i = state.ui.lesson[m.id];
+  if (i == null) { i = m.lessons.findIndex(l => !state.lessons[l.id]); if (i < 0) i = 0; }
+  i = Math.max(0, Math.min(n - 1, i));
+  const l = m.lessons[i], read = !!state.lessons[l.id], last = i === n - 1;
+  return `<section class="block">
+    <p class="muted small">Fiche ${i + 1} sur ${n}, ${esc(m.title)}</p>
+    <div class="pager" aria-hidden="true">${m.lessons.map((x, k) => `<span class="${k === i ? "here" : state.lessons[x.id] ? "read" : ""}"></span>`).join("")}</div>
+    <article class="lesson" aria-labelledby="h-lesson">
+      <h2 id="h-lesson">${esc(l.title)}</h2>
+      ${l.body.map(p => `<p>${esc(p)}</p>`).join("")}
+      ${LESSON_TOOLS[l.id] ? `<p class="toolsline">Fiches outils : ${toolLinks(LESSON_TOOLS[l.id])}</p>` : ""}
+      ${l.sources.length ? `<div class="sources">Pour aller plus loin ${l.sources.map(s => `<a href="${s[1]}" target="_blank" rel="noopener">${esc(s[0])}</a>`).join("")}</div>` : ""}
+    </article>
+    <div class="row" style="margin-top:18px">
+      <button class="btn" data-act="lesson-prev" data-m="${m.id}" ${i === 0 ? "disabled" : ""}>Fiche précédente</button>
+      <button class="btn main" data-act="lesson-next" data-m="${m.id}" data-i="${i}">${last ? "J’ai lu, passer au quiz" : "J’ai lu, fiche suivante"}</button>
+      ${read ? `<span class="tag ok">Lue</span><button class="btn link" data-act="lesson-unread" data-id="${l.id}">Marquer comme non lue</button>` : ""}
+    </div></section>`;
+}
+
+function viewQuiz(m) {
+  const q = state.quiz[m.id] || {};
+  const run = q.run;
+  if (run) {
+    const item = m.quiz[run.i], a = run.answers[run.i], last = run.i === m.quiz.length - 1;
+    const opts = item.a.map((t, j) => {
+      const cls = run.checked ? (j === item.ok ? "right" : j === a ? "wrong" : "") : "";
+      return `<label class="opt ${cls}"><input type="radio" name="answer" value="${j}" ${a === j ? "checked" : ""} ${run.checked ? "disabled" : ""}><span>${esc(t)}</span></label>`;
+    }).join("");
+    const good = a === item.ok;
+    return `<section class="block">
+      <p class="muted small">Question ${run.i + 1} sur ${m.quiz.length}</p>
+      <div class="pager" aria-hidden="true">${m.quiz.map((x, k) => `<span class="${k === run.i ? "here" : k < run.i ? (run.answers[k] === m.quiz[k].ok ? "read" : "") : ""}"></span>`).join("")}</div>
+      <fieldset class="q"><legend>${esc(item.q)}</legend>${opts}</fieldset>
+      <div role="status">${run.checked ? `<div class="feedback ${good ? "" : "bad"}"><strong>${good ? "Juste." : "Pas tout à fait."}</strong> ${esc(item.exp)}</div>` : ""}</div>
+      <p class="err" id="qerr"></p>
+      <div class="row">${run.checked
+        ? `<button class="btn main" data-act="q-next" data-m="${m.id}">${last ? "Voir mon score" : "Question suivante"}</button>`
+        : `<button class="btn main" data-act="q-check" data-m="${m.id}">Vérifier</button>`}
+        <button class="btn link" data-act="q-quit" data-m="${m.id}">Arrêter le quiz</button></div></section>`;
+  }
+  if (q.lastAnswers) {
+    const ok = m.quiz.filter((it, i) => q.lastAnswers[i] === it.ok).length, score = Math.round(ok / m.quiz.length * 100);
+    const missed = m.quiz.map((it, i) => ({ it, i })).filter(x => q.lastAnswers[x.i] !== x.it.ok);
+    return `<section class="block"><h2>Quiz : ${esc(m.title)}</h2>
+      <p><span class="bigfig">${score} %</span> <span class="muted">${ok} sur ${m.quiz.length} au dernier essai</span></p>
+      <p>${q.first != null && q.attempts > 1 ? `Premier essai ${q.first} %, meilleur score ${q.best} %, ${q.attempts} essais.` : `Meilleur score ${q.best} %.`}
+      ${q.best >= PASS ? ` <span class="tag ok">Étape suivante ouverte</span>` : ` Il faut ${PASS} % pour ouvrir l’étape suivante.`}</p>
+      ${missed.length ? `<h3>À revoir</h3><ul class="plain">${missed.map(x => `<li><span><strong>${esc(x.it.q)}</strong><br>${esc(x.it.a[x.it.ok])}<br><span class="small muted">${esc(x.it.exp)}</span></span></li>`).join("")}</ul>` : `<p>Aucune erreur.</p>`}
+      <div class="row" style="margin-top:16px"><button class="btn ${q.best >= PASS ? "" : "main"}" data-act="q-start" data-m="${m.id}">Refaire le quiz</button>${q.best >= PASS ? `<a class="btn main" href="#${m.slug}-exercices">Passer aux exercices</a>` : `<a class="btn" href="#${m.slug}-fiches">Relire les fiches</a>`}</div></section>`;
+  }
+  return `<section class="block"><h2>Quiz : ${esc(m.title)}</h2>
+    <p>${m.quiz.length} questions, une à la fois, avec l’explication juste après votre réponse. Comptez ${m.quiz.length * 2} minutes.</p>
+    <p class="muted">Votre premier essai est gardé comme point de départ ; seul le meilleur score compte pour avancer.</p>
+    <button class="btn main" data-act="q-start" data-m="${m.id}">Commencer</button></section>`;
+}
+
+function viewExercises(m) {
+  return `<section class="block"><h2>Exercices : ${esc(m.title)}</h2><p class="muted">Un exercice se valide quand tous ses critères sont cochés et qu’une preuve est déposée. C’est cette liste que vous montrerez.</p></section>` +
+  m.exercises.map(e => {
+    const s = exState(e), v = s.status === "validated";
+    return `<article class="ex ${v ? "validated" : ""}" aria-labelledby="h-${e.id}">
+      <div class="row"><h3 id="h-${e.id}">${esc(e.title)}</h3>${v ? `<span class="tag ok" style="margin-left:auto">Validé</span>` : ""}</div>
+      <p class="meta">${esc(e.tool)}, environ ${esc(e.time)}</p>
+      <p>${esc(e.brief)}</p>
+      ${EX_TOOLS[e.id] ? `<p class="toolsline" style="margin-top:-4px">Avant de commencer, la fiche outil : ${toolLinks(EX_TOOLS[e.id])}</p>` : ""}
+      <fieldset style="border:0;padding:0;margin:0" class="crit"><legend class="small muted">Critères</legend>
+        ${e.criteria.map((c, i) => `<label><input type="checkbox" data-crit="${e.id}" data-i="${i}" ${s.criteria[i] ? "checked" : ""} ${v ? "disabled" : ""}><span>${esc(c)}</span></label>`).join("")}</fieldset>
+      <label for="p-${e.id}" class="small muted" style="display:block;margin:10px 0 4px">Preuve : ${esc(e.proof.toLowerCase())}</label>
+      <input type="text" id="p-${e.id}" class="field" data-proof="${e.id}" value="${esc(s.proof || "")}" placeholder="https://…" ${v ? "disabled" : ""}>
+      <p class="err" id="err-${e.id}"></p>
+      <div class="row">${v ? `<span class="small muted">Validé le ${new Date(s.validatedAt).toLocaleDateString("fr-FR")}</span><button class="btn link" data-act="ex-reopen" data-id="${e.id}">Rouvrir</button>` : `<button class="btn main" data-act="ex-validate" data-id="${e.id}" data-m="${m.id}">Valider l’exercice</button>`}</div>
+    </article>`;
+  }).join("") + (validatedCount(m) === m.exercises.length ? `<p><a class="btn main" href="#${m.slug}-carnet">Écrire la rétro de l’étape</a></p>` : "");
+}
+
+function viewNotebook(m) {
+  const n = state.notes[m.id] || {};
+  const qs = [["got", "Ce que j’ai compris", "Une idée qui a changé votre façon de voir le sujet."], ["stuck", "Ce qui m’a bloqué", "Où avez-vous perdu du temps, et pourquoi ?"], ["change", "Ce que je change pour la suite", "Une seule décision concrète pour l’étape suivante."]];
+  return `<section class="block"><h2>Carnet : ${esc(m.title)}</h2>
+    <p class="muted">Personne ne relit ce carnet à votre place. Trois réponses courtes suffisent ; elles serviront de matière pour l’entretien.</p>
+    ${qs.map(([k, label, hint]) => `<h3><label for="n-${k}">${label}</label></h3><p class="small muted" id="hint-${k}">${hint}</p><textarea class="field" id="n-${k}" data-note="${m.id}" data-k="${k}" aria-describedby="hint-${k}">${esc(n[k] || "")}</textarea>`).join("")}
+    <p class="small muted" style="margin-top:12px" id="notestatus" aria-live="polite">${noteDone(m) ? "Carnet complet, enregistré." : "Enregistré automatiquement."}</p>
+    ${m.id < 5 && isDone(m) ? `<p><a class="btn main" href="#module-${m.id + 1}">Étape suivante</a></p>` : ""}</section>`;
+}
+
+function render() {
+  const r = parse();
+  renderChrono(); renderTrail(r);
+  let html;
+  if (r.view === "accueil") html = viewHome();
+  else if (r.view === "outils") html = viewTools();
+  else if (r.view === "outil") html = viewTool(r.tool);
+  else if (!isUnlocked(r.m)) html = lockedView(r.m);
+  else html = { apercu: viewOverview, fiches: viewLessons, quiz: viewQuiz, exercices: viewExercises, carnet: viewNotebook }[r.view](r.m);
+  document.getElementById("main").innerHTML = html;
+  document.title = (r.m ? r.m.title : r.tool ? r.tool.name : r.view === "outils" ? "Boîte à outils" : "Tableau de bord") + " · Builder Path";
+}
+function toast(msg) { const t = document.getElementById("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), 2400); }
+function go(href) { if (location.hash === href) render(); else location.hash = href; }
+
+/* ---------- Interactions ---------- */
+function startSession() { const r = parse(); state.session = { start: new Date().toISOString(), module: r.m ? r.m.id : null }; persist(); toast("Séance démarrée"); }
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("[data-act], a[data-lesson]"); if (!b) return;
+  if (b.dataset.lesson) { const [mid, i] = b.dataset.lesson.split(":").map(Number); state.ui.lesson[mid] = i; persist(false); }
+  const act = b.dataset.act, m = b.dataset.m ? MODULES[Number(b.dataset.m) - 1] : null;
+  switch (act) {
+    case "start": startSession(); render(); break;
+    case "start-go": startSession(); go(b.dataset.href); break;
+    case "stop": {
+      const min = Math.min(240, elapsed()), mod = state.session.module;
+      if (min >= 1) { state.sessions.push({ start: state.session.start, min, module: mod || (parse().m || {}).id || null }); toast("Séance enregistrée : " + fmtMin(min)); }
+      else toast("Séance de moins d’une minute, non comptée");
+      state.session = null; persist(); render(); break;
+    }
+    case "unlock": state.unlocked[m.id] = true; persist(); render(); break;
+    case "lesson-prev": state.ui.lesson[m.id] = Math.max(0, (state.ui.lesson[m.id] ?? 0) - 1); persist(false); render(); window.scrollTo({ top: 0 }); break;
+    case "lesson-next": {
+      const i = Number(b.dataset.i); state.lessons[m.lessons[i].id] = true;
+      if (i === m.lessons.length - 1) { persist(); go("#" + m.slug + "-quiz"); }
+      else { state.ui.lesson[m.id] = i + 1; persist(); render(); window.scrollTo({ top: 0 }); document.getElementById("h-lesson").focus?.(); }
+      break;
+    }
+    case "lesson-unread": state.lessons[b.dataset.id] = false; persist(); render(); break;
+    case "q-start": state.quiz[m.id] = Object.assign({}, state.quiz[m.id], { run: { i: 0, answers: [], checked: false } }); persist(false); render(); window.scrollTo({ top: 0 }); break;
+    case "q-check": {
+      const run = state.quiz[m.id].run;
+      if (run.answers[run.i] == null) { document.getElementById("qerr").textContent = "Choisissez une réponse avant de vérifier."; document.querySelector('input[name="answer"]').focus(); break; }
+      run.checked = true; persist(false); render(); break;
+    }
+    case "q-next": {
+      const q = state.quiz[m.id], run = q.run;
+      if (run.i < m.quiz.length - 1) { run.i++; run.checked = false; persist(false); render(); break; }
+      const ok = m.quiz.filter((it, i) => run.answers[i] === it.ok).length, score = Math.round(ok / m.quiz.length * 100);
+      q.attempts = (q.attempts || 0) + 1; if (q.first == null) q.first = score;
+      q.best = Math.max(q.best || 0, score); q.lastAnswers = run.answers; q.run = null;
+      persist(); render(); window.scrollTo({ top: 0 });
+      toast(score >= PASS ? "Quiz réussi : " + score + " %" : "Score : " + score + " %");
+      break;
+    }
+    case "q-quit": state.quiz[m.id].run = null; persist(false); render(); break;
+    case "ex-validate": {
+      const e = m.exercises.find(x => x.id === b.dataset.id), s = exState(e), err = document.getElementById("err-" + e.id);
+      if (!e.criteria.every((_, i) => s.criteria[i])) { err.textContent = "Cochez tous les critères avant de valider."; break; }
+      if (!(s.proof || "").trim()) { err.textContent = "Ajoutez une preuve : un lien ou une description courte."; document.getElementById("p-" + e.id).focus(); break; }
+      s.status = "validated"; s.validatedAt = new Date().toISOString(); persist(); render(); toast("Exercice validé"); break;
+    }
+    case "ex-reopen": { if (confirm("Rouvrir cet exercice ? Il ne comptera plus comme validé.")) { state.exercises[b.dataset.id].status = "todo"; persist(); render(); } break; }
+    case "export": {
+      const txt = JSON.stringify(state, null, 2);
+      (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => toast("Progression copiée"), () => prompt("Copiez votre progression :", txt));
+      break;
+    }
+  }
+});
+document.addEventListener("change", ev => {
+  const t = ev.target;
+  if (t.name === "answer") { const r = parse(); const run = state.quiz[r.m.id].run; if (!run.checked) { run.answers[run.i] = Number(t.value); document.getElementById("qerr").textContent = ""; persist(false); } }
+  if (t.dataset.crit) { exState({ id: t.dataset.crit }).criteria[Number(t.dataset.i)] = t.checked; persist(); }
+  if (t.id === "goal") { state.goalH = Number(t.value); persist(false); render(); }
+});
+document.addEventListener("input", ev => {
+  const t = ev.target;
+  if (t.dataset.proof) { exState({ id: t.dataset.proof }).proof = t.value; document.getElementById("err-" + t.dataset.proof).textContent = ""; persist(); }
+  if (t.dataset.note) {
+    const id = Number(t.dataset.note); (state.notes[id] = state.notes[id] || {})[t.dataset.k] = t.value; persist();
+    document.getElementById("notestatus").textContent = noteDone(MODULES[id - 1]) ? "Carnet complet, enregistré." : "Enregistré automatiquement.";
+  }
+});
+window.addEventListener("hashchange", () => { render(); window.scrollTo({ top: 0 }); document.getElementById("main").focus({ preventScroll: true }); });
+setInterval(() => { const el = document.getElementById("elapsed"); if (el && state.session) el.textContent = fmtMin(elapsed()); }, 15000);
+
+loadLocal();
+render();
+connectDb();
+</script>
+</body>
+</html>
